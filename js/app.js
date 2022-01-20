@@ -44,11 +44,11 @@ function BracketImage(name, extension = 'jpg') {
   this.src = `img/${name}.${extension}`
   this.alt = name
   bracketItems.push(this)
-  this.render = function(renderPosition) {
+  this.render = function(renderPosition, clear = false) {
     let possiblePositions = voteArea.querySelectorAll('img')
     let thisPosition = possiblePositions[renderPosition]
-    thisPosition.src = this.src
-    thisPosition.alt = this.alt
+    thisPosition.src = !clear && this.src || ""
+    thisPosition.alt = !clear && this.alt || ""
   }
 }
 
@@ -69,12 +69,13 @@ new BracketImage("pet-sweep")
 
 //main
 
-function roll() {
+function roll(clear = false) {
+  console.log(clear)
   let displayed = advanceQueue()
   for(let i = 0; i < displayed.length; i++) {
     let bracketImage = imageQueue[i]
     bracketImage.views++
-    bracketImage.render(i)
+    bracketImage.render(i, clear)
   }
 }
 
@@ -98,25 +99,66 @@ function onClick(event) {
       
   }
   //reroll
-  if(clicksRemaining) {
-    roll()
-    return
+  roll(!clicksRemaining)
+  if(!clicksRemaining) {
+    //game end
+    voteArea.removeEventListener('click', onClick)
+    button.addEventListener('click', onButtonClick)
+    button.classList.add('enabled-button')
   }
-  //game end
-  voteArea.removeEventListener('click', onClick)
-  button.addEventListener('click', onButtonClick)
-  button.classList.add('enabled-button')
 }
 
 function onButtonClick(event) {
   button.removeEventListener('click', onButtonClick)
   button.classList.remove('enabled-button')
-  let ul = button.parentElement.appendChild(document.createElement('ul'))
+  const labels = [];
+  const likes = []
+  const views = []
+
   for(let i = 0; i < bracketItems.length; i++) {
-    let bracketImage = bracketItems[i]
-    let li = ul.appendChild(document.createElement('li'))
-    li.textContent = `${bracketImage.alt} was seen ${bracketImage.views} and liked ${bracketImage.likes} times.`
+    labels.push(bracketItems[i].alt)
+    likes.push(bracketItems[i].likes)
+    views.push(bracketItems[i].views)
   }
+
+  const data = {
+    labels: bracketItems.map(bracketImage => bracketImage.alt),
+    datasets: [{
+      label: 'Views',
+      data: bracketItems.map(bracketImage => bracketImage.views),
+      backgroundColor: [
+        'rgba(240, 5, 130, 0.8)',
+      ],
+      borderColor: [
+        'rgba(0, 0, 0, 0.8)',
+      ],
+      borderWidth: 1
+    }, {
+      label: 'Likes',
+      data: bracketItems.map(bracketImage => bracketImage.likes),
+      backgroundColor: [
+        'rgb(252, 186, 3)',
+      ],
+      borderColor: [
+        'rgba(0, 0, 0, 0.8)',
+      ],
+      borderWidth: 2
+    }]
+  };
+
+  const config = {
+    type: 'bar',
+    data: data,
+    options: {},
+  };
+
+  let myChart = new Chart(
+    document.getElementById('myChart'),
+    config
+  );
+  myChart.canvas.parentNode.style.height = '800px';
+  myChart.canvas.parentNode.style.width = '800px';
+
 }
 
 roll()
