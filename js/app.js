@@ -3,129 +3,116 @@
 //globals
 
 //list of all BracketImages
-const bracketItems = []
+const bracketItems = [];
 //BracketImages on display 1 to 3, BracketImages queued next from 3 to 6
-let imageQueue = []
+let imageQueue = [];
 //area clicks are on
-const voteArea = document.querySelector('section')
+const voteArea = document.querySelector('section');
 //button for viewing results
-const button = document.querySelector('.show-results')
+const button = document.querySelector('.show-results');
 //how many clicks the player has left
-let clicksRemaining = 10
+let clicksRemaining = 10;
 
 //helpers
 
 function pick(array) {
-  return array[Math.floor(Math.random() * array.length)]
+  return array[Math.floor(Math.random() * array.length)];
 }
 
 function advanceQueue() {
-  let displayed = []
+  let displayed = [];
   //add 3 to the end (uniques only!)
   while(imageQueue.length < 9) {
-    let bracketImage = pick(bracketItems)
+    let bracketImage = pick(bracketItems);
     if(imageQueue.includes(bracketImage)) {
-      continue
+      continue;
     }
-    imageQueue.push(bracketImage)
+    imageQueue.push(bracketImage);
   }
   //take 3 from the start
   for(let i = 0; i < 3; i++) {
-    displayed[i] = imageQueue.shift()
+    displayed[i] = imageQueue.shift();
   }
-  return displayed
+  return displayed;
 }
 
 //constructors
 
-function BracketImage(name, extension = 'jpg') {
-  this.views = 0
-  this.likes = 0
-  this.src = `img/${name}.${extension}`
-  this.alt = name
-  bracketItems.push(this)
+function BracketImage(name, extension = 'jpg', views = 0, likes = 0) {
+  this.views = views;
+  this.likes = likes;
+  this.extension = extension;
+  this.src = `img/${name}.${extension}`;
+  this.alt = name;
+  bracketItems.push(this);
   this.render = function(renderPosition, clear = false) {
-    let possiblePositions = voteArea.querySelectorAll('img')
-    let thisPosition = possiblePositions[renderPosition]
-    thisPosition.src = !clear && this.src || ""
-    thisPosition.alt = !clear && this.alt || ""
-  }
+    let possiblePositions = voteArea.querySelectorAll('img');
+    let thisPosition = possiblePositions[renderPosition];
+    thisPosition.src = !clear && this.src || '';
+    thisPosition.alt = !clear && this.alt || '';
+  };
 }
-
-//constructed
-
-new BracketImage("bag")
-new BracketImage("banana")
-new BracketImage("bathroom")
-new BracketImage("boots")
-new BracketImage("breakfast")
-new BracketImage("bubblegum")
-new BracketImage("chair")
-new BracketImage("cthulhu")
-new BracketImage("dog-duck")
-new BracketImage("dragon")
-new BracketImage("pen")
-new BracketImage("pet-sweep")
 
 //main
 
 function roll(clear = false) {
-  console.log(clear)
-  let displayed = advanceQueue()
+  console.log(clear);
+  let displayed = advanceQueue();
   for(let i = 0; i < displayed.length; i++) {
-    let bracketImage = imageQueue[i]
-    bracketImage.views++
-    bracketImage.render(i, clear)
+    let bracketImage = imageQueue[i];
+    bracketImage.views++;
+    bracketImage.render(i, clear);
   }
 }
 
-voteArea.addEventListener('click', onClick)
+voteArea.addEventListener('click', onClick);
 
 function onClick(event) {
   //validate it
   if(!event.target.alt) {
-    return
+    return;
   }
 
   //handle image
-  clicksRemaining--
+  clicksRemaining--;
   for(let i = 0; i < bracketItems.length; i++) {
-    let bracketImage = bracketItems[i]
-    if(bracketImage.alt == event.target.alt) {
-      bracketImage.likes++
-      console.log(bracketImage.likes)
-      break
+    let bracketImage = bracketItems[i];
+    if(bracketImage.alt === event.target.alt) {
+      bracketImage.likes++;
+      console.log(bracketImage.likes);
+      break;
     }
-      
+
   }
   //reroll
-  roll(!clicksRemaining)
+  roll(!clicksRemaining);
   if(!clicksRemaining) {
     //game end
-    voteArea.removeEventListener('click', onClick)
-    button.addEventListener('click', onButtonClick)
-    button.classList.add('enabled-button')
+    save(); //save their votes, whether they view final results or not.
+    voteArea.removeEventListener('click', onClick);
+    button.addEventListener('click', onButtonClick);
+    button.classList.add('enabled-button');
   }
 }
 
-function onButtonClick(event) {
-  button.removeEventListener('click', onButtonClick)
-  button.classList.remove('enabled-button')
+function onButtonClick() {
+  button.removeEventListener('click', onButtonClick);
+  button.classList.remove('enabled-button');
   const labels = [];
-  const likes = []
-  const views = []
+  const likes = [];
+  const views = [];
 
   for(let i = 0; i < bracketItems.length; i++) {
-    labels.push(bracketItems[i].alt)
-    likes.push(bracketItems[i].likes)
-    views.push(bracketItems[i].views)
+    labels.push(bracketItems[i].alt);
+    likes.push(bracketItems[i].likes);
+    views.push(bracketItems[i].views);
   }
 
   const data = {
-    labels: bracketItems.map(bracketImage => bracketImage.alt),
+    labels: labels,
     datasets: [{
       label: 'Views',
-      data: bracketItems.map(bracketImage => bracketImage.views),
+      data: views,
       backgroundColor: [
         'rgba(240, 5, 130, 0.8)',
       ],
@@ -135,7 +122,7 @@ function onButtonClick(event) {
       borderWidth: 1
     }, {
       label: 'Likes',
-      data: bracketItems.map(bracketImage => bracketImage.likes),
+      data: likes,
       backgroundColor: [
         'rgb(252, 186, 3)',
       ],
@@ -161,4 +148,42 @@ function onButtonClick(event) {
 
 }
 
-roll()
+function save() {
+  let stringified = JSON.stringify(bracketItems);
+  localStorage.setItem('bracketItems', stringified);
+}
+
+function load() {
+  let objArray = localStorage.getItem('bracketItems');
+  if(objArray) {
+    let unpackedArray = JSON.parse(objArray);
+    for(let unpacked of unpackedArray) {
+      new BracketImage(unpacked.alt, unpacked.extension, unpacked.views, unpacked.likes);
+    }
+  } else {
+    //first time setup
+
+    new BracketImage('bag');
+    new BracketImage('banana');
+    new BracketImage('bathroom');
+    new BracketImage('boots');
+    new BracketImage('breakfast');
+    new BracketImage('bubblegum');
+    new BracketImage('chair');
+    new BracketImage('cthulhu');
+    new BracketImage('dog-duck');
+    new BracketImage('dragon');
+    new BracketImage('pen');
+    new BracketImage('pet-sweep');
+    new BracketImage('scissors');
+    new BracketImage('shark');
+    new BracketImage('sweep', 'png');
+    new BracketImage('tauntaun');
+    new BracketImage('unicorn');
+    new BracketImage('water-can');
+    new BracketImage('wine-glass');
+  }
+}
+
+load();
+roll();
